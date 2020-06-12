@@ -1,0 +1,345 @@
+---
+title: "Statistical Learning : Coursework 2"
+author: "Jordan Vauls"
+date: "17/03/2020"
+output: pdf_document
+---
+# Introduction
+
+In this report, we will be analysing variables (social classes,median income, median age, university-level education, who were born outside the UK) may affect the way that they vote to leave the EU (Brexit) and how stable such relationships are. In addition, we perform two models, logistic regression and decision tree. They will be evaluated and checked against each other to verify which model is most accurate. Each following questions would be addressed technically and analytically.
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(knitr)
+library(png)      # For grabbing the dimensions of png files
+library(jtools)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+
+```
+## Tasks (week 6):
+
+#### Setting up the dataframe called "data_set"
+
+Firstly we will setup the dataset which will then be used to query from and create the models as well as importing the packages which have been used throughout the completion of the tasks.
+
+```{r}
+img1_path <- "C://Users//JordanLaptop//Desktop//StatsCw2//Guardian.PNG"
+img1 <- readPNG(img1_path, native = TRUE, info = TRUE)
+data_set <- read.csv("C:\\Users\\JordanLaptop\\Desktop\\StatsCw2\\brexit.csv")
+```
+
+Having imported the scraped data “brexit.csv” as “brexit_data” we can see this is comprised of 344 rows by 6 columns of variable names:
+
+medianIncome: the median income of residents.
+   
+withHigherEd: the proportion of residents with any university-level education.
+
+medianAge: the median age of residents.
+
+voteBrexit: whether the local authorities as a whole voted for or against Brexit.  
+
+notBornUK: number of residents who were born outside the UK.
+
+abc1: the proportion of residents in each different social class.
+   
+  
+Looking at the data all the predictor variables are normalised for the analysis and they will be used in each of the two models we will evaluate. 
+
+### 1. Fit a logistic regression models using all of the available inputs. Identify the direction of each eect from the fitted coecients. Compare these with the plots shown on the Guardian website. Do they agree?
+
+Creating the model, inputting the variables which we are going to investigate into the model. This will determine which variable has the strongest correlation with voting brexit. In order to that we must investigate the coefficients.
+```{r}
+#Specify a glm
+myglm = glm(voteBrexit ~ abc1 + notBornUK + medianIncome + medianAge + withHigherEd, family=binomial, data=data_set)
+```
+```{r}
+Summary1 = summary(myglm)$coefficients
+Summary1
+```
+```{r}
+format(summary(myglm)$coefficients, digits = 10) %>%
+  kable(caption = "Coefficients of the regression model.")
+```
+
+
+We can see from table 1 that there is positive and negative estimate coefficients, a positive estimate would make the event more likely to happen where as a negative one would make the event less likely to happen. This would mean that the more negative the estimate is the more likely the outcome of remain however if the estimate was more positive it would mean that the resident would more likely want to vote Brexit therefore leave. 
+
+```{r  out.width = "80%", echo = FALSE, fig.align='center', fig.cap = "Guardian Plots" }
+include_graphics(img1_path) 
+```
+
+From the Guardian website provided we are presented with the following 6 plots. The graphs given plot all the local authorities with the demographic characteristic on the y axis and the vote outcome on the x axis. Also voting population size is illustrated by the size of each point and the leave/remain result is shown by the blue/yellow colouring.
+
+We will now compare each of the predictor variables to the graphs which are found on the guardian website (Figure 1):
+
+#### Social Class (ABC1): Disagree with plot
+
+As we can see form the social grade, we would expect to see a clear relation with leaving the EU according to the strong coefficient found in the dataset however this does not correlate with the guardian plots as we can see it has a negative correlation disagreeing with what we have discovered from the logisitic model. 
+
+#### Born in the UK: Disagree with plot
+
+Born in the UK has a positive correlation with voting brexit from what we have analysed through the logistic model. This can be seen as the coefficient estimate is shown to be 5.6, we can say that this variable will contribute to the voting for brexit from the data which has been scraped off the guardian website. However when we look at the data which has been plotted on the website it shows there to be a very high number of residents which are born in the UK voting quite evenly to stay and leave, there can be seen to be scattered results.  
+
+#### Median Income: Agree with plot
+
+Looking at the median income of the residents it shows that the coefficient has a negative correlation with voting brexit. This can be seen as the estimate is negative at -6.3. This is reflected and agrees with the Guardians plot as we can see that the data is negatively correlated. 
+
+#### Median Age: Agree with plot
+
+The median age is much the same as the previous variable we have looked into "Born in the UK" this is because its coefficient is around the same positivity at 5.9. Therefore this can be said to have a positive impact on whether the resident votes for brexit. Futhermore, comapring this variable to the plot on the guardian website it agrees with the positive correlation as you can see from figure1 median age is positively correlated. 
+
+
+#### Higher Education: Agree with plot
+
+Higher Education has the largest influence in whether someone votes brexit or not out of all the variables as we can see its estimate is highly negative which suggests that the residents who have universitylevel education will be voting against brexit. This can be backed up through the Guardians plot where it is highly negatively skewed aswell and agrees with what we have found in the data. 
+
+### Conclusion
+
+Higher education is the most influencing variable as to whether the resident votes brexit or not, closely followed by the social class which has the opposite affect. We have concluded that all the variables except born in the uk and social has agreed with the model shown on the guardians website.
+
+### 2. Present the value of each coefficient estimate with a 95% confidence interval. Which input would you say has the strongest effect?
+
+```{r}
+SummaryBreakdown <- matrix(ncol = 5, nrow = 5)
+  colnames(SummaryBreakdown) <- c('Coefficient', 'Min', 'Max', 'Estimate', 'Standard Error')
+```
+
+In order to tackle this problem, we need to look at the uncertainty of our coefficient calculations, as seen by the confidence intervals. The standard error coefficient of the summaries of the previous section may also be utilised in this question
+
+To calculate the confidence intervals, we want to check that at a 95% confidence point, we're going to use a p-value of 0.975. (95% confidence interval). In order to calculate the intervals, we need to get the standard error coefficient and estimate from the summaries of the previous sections that we created. When we find them, we insert them into the equation to evaluate the min and max.
+
+
+### Gathering Confidence intervcal data.
+
+```{r}
+critical = qnorm(0.975)
+estimate = Summary1[2,1]
+sterr = Summary1[2,2]
+interval_min = estimate - critical*sterr
+interval_max = estimate + critical*sterr
+SummaryBreakdown[1,1] = "abc1"
+SummaryBreakdown[1,2] = interval_min
+SummaryBreakdown[1,3] = interval_max
+SummaryBreakdown[1,4] = estimate
+SummaryBreakdown[1,5] = sterr
+
+
+estimate = Summary1[3,1]
+sterr = Summary1[3,2]
+interval_min = estimate - critical*sterr
+interval_max = estimate + critical*sterr
+SummaryBreakdown[2,1] = "notBornUK"
+SummaryBreakdown[2,2] = interval_min
+SummaryBreakdown[2,3] = interval_max
+SummaryBreakdown[2,4] = estimate
+SummaryBreakdown[2,5] = sterr
+
+
+estimate = Summary1[4,1]
+sterr = Summary1[4,2]
+interval_min = estimate - critical*sterr
+interval_max = estimate + critical*sterr
+SummaryBreakdown[3,1] = "medianIncome"
+SummaryBreakdown[3,2] = interval_min
+SummaryBreakdown[3,3] = interval_max
+SummaryBreakdown[3,4] = estimate
+SummaryBreakdown[3,5] = sterr
+
+
+estimate = Summary1[5,1]
+sterr = Summary1[5,2]
+interval_min = estimate - critical*sterr
+interval_max = estimate + critical*sterr
+SummaryBreakdown[4,1] = "medianAge"
+SummaryBreakdown[4,2] = interval_min
+SummaryBreakdown[4,3] = interval_max
+SummaryBreakdown[4,4] = estimate
+SummaryBreakdown[4,5] = sterr
+
+estimate = Summary1[6,1]
+sterr = Summary1[6,2]
+interval_min = estimate - critical*sterr
+interval_max = estimate + critical*sterr
+SummaryBreakdown[5,1] = "withHigherEd"
+SummaryBreakdown[5,2] = interval_min
+SummaryBreakdown[5,3] = interval_max
+SummaryBreakdown[5,4] = estimate
+SummaryBreakdown[5,5] = sterr
+kable(SummaryBreakdown, caption = "Comparison of Confidence Intervals", digits = 3)
+```
+
+### Plotting Confidence Intervals.
+
+```{r, warning=FALSE, error=FALSE,message=FALSE}
+plot_summs(myglm, ci_level=0.95) + scale_x_continuous(breaks = seq(-60, 60, by = 5))
+```
+All of the 95% confidence intervals are useful predicators for the Brexit outcome as none of them contain zero within their intervals. 
+
+Now that we have created the min and max confidence intervals, we can now analyse them. The most important thing to note when looking at these confidence intervals is that the median income and the higher education variables have a negative impact on voting Brexit with having a higher education being the most influential variable, This can be shown through the standard error being the highest and it having the most negative effect. We can say that the p values which are represented in the summary tables are all significant as they are below 0.05.
+
+### 3. Using aic, perform a model selection to determine which factors are useful to predict the result of the vote. Use a ‘greedy’ input selection procedure, as follows: (i) select the best model with 1 input;(ii) fixing that input, select the best two-input model (i.e. try all the other 4 inputs with the one you selected first); (iii) select the best three-input model containing the first two inputs you chose, etc. At each stage evaluate the quality of fit using aic and stop if this gets worse.
+
+In this section we will be looking at the AIC of the models to determine which combination is the most effective when combined to predict whether someone will vote brexit or not. We will use the greedy input selection procedure as follows:
+
+### Selecting model with 1 input variables:
+
+```{r}
+Model1 <- glm(formula = data_set$voteBrexit ~ data_set$abc1, data = data_set, family=binomial)
+Model2 <- glm(formula = data_set$voteBrexit ~ data_set$notBornUK, data = data_set)
+Model3 <- glm(formula = data_set$voteBrexit ~ data_set$medianIncome, data = data_set, family=binomial)
+Model4 <- glm(formula = data_set$voteBrexit ~ data_set$medianAge, data = data_set, family=binomial) 
+Model5 <- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd, data = data_set, family=binomial)
+models_summary <- matrix(ncol = 2, nrow = 15)
+colnames(models_summary) <- c('Model', 'AIC')
+   options(knitr.kable.NA = '')
+models_summary[1,1] = "Model1, VoteBrexit~abc1"
+models_summary[1,2] = summary(Model1)$aic
+models_summary[2,1] = "Model2, VoteBrexit~notBornUK"
+models_summary[2,2] = summary(Model2)$aic
+models_summary[3,1] = "Model3, VoteBrexit~medianIncome"
+models_summary[3,2] = summary(Model3)$aic
+models_summary[4,1] = "Model4, VoteBrexit~medianAge"
+models_summary[4,2] = summary(Model4)$aic
+models_summary[5,1] = "Model5, VoteBrexit~withHigherEd"
+models_summary[5,2] = summary(Model5)$aic
+kable(models_summary, caption = "First Stage: AIC comparison by models.")
+```
+
+Best Model = (Model5, VoteBrexit~withHigherEd)
+
+We can see from the first stage of greedy selection that the variable "withHigherEd" has the lowest AIC rating therefore this is the variable which will affect the model the most and we take it onto the next stage as a static. In the next stage we will pair this variable with another one to see if the AIC has gone down. 
+
+### Selecting model with 2 input variables:
+
+```{r, tidy=TRUE}
+Model6 <- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$abc1, data = data_set,family=binomial)
+Model7 <- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$notBornUK, data = data_set,family=binomial)
+Model8 <- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$medianIncome, data = data_set, family=binomial)
+Model9 <- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$medianAge, data = data_set, family=binomial)
+models_summary[6,1] = "Model6, VoteBrexit~withHigherEd+abc1"
+models_summary[6,2] = summary(Model6)$aic
+models_summary[7,1] = "Model7, VoteBrexit~withHigherEd+notBornUK"
+models_summary[7,2] = summary(Model7)$aic
+models_summary[8,1] = "Model8, VoteBrexit~withHigher+medianIncome"
+models_summary[8,2] = summary(Model8)$aic
+models_summary[9,1] = "Model9, VoteBrexit~withHigherEd+medianAge"
+models_summary[9,2] = summary(Model9)$aic
+kable(models_summary, caption = "Second Stage: AIC comparison by models.")
+```
+
+Best model = (Model6, VoteBrexit~withHigherEd+abc1)
+
+In this stage we use the previous variable and compare it against the other to get the most optimal according to the AIC as we can see from the table the the model which has Higher Education and Social class (abc1), comes out with the most optimal AIC at 286 which is still lower than the previous test so therefore we continue on with our investigation using greedy selection.
+
+### Selecting model with 3 input variables:
+
+```{r,tidy=TRUE}
+Model10<- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$abc1 + data_set$notBornUK , data = data_set, family=binomial)
+Model11<- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$abc1 + data_set$medianIncome , data = data_set, family=binomial)
+Model12<- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$abc1 + data_set$medianAge , data = data_set, family=binomial)
+models_summary[10,1] = "Model10, VoteBrexit~withHigherEd+abc1+notBornUK"
+models_summary[10,2] = summary(Model10)$aic
+models_summary[11,1] = "Model11, VoteBrexit~withHigher+abc1+medianIncome"
+models_summary[11,2] = summary(Model11)$aic
+models_summary[12,1] = "Model12, VoteBrexit~withHigherEd+abc1+medianAge"
+models_summary[12,2] = summary(Model12)$aic
+kable(models_summary, caption = "Third Stage: AIC comparison by models.")
+```
+
+Best model = (Model12, VoteBrexit~withHigherEd+abc1+medianAge)
+
+The third stage uses the previous two variables higher education and social class to test with another variable, in this test we find that the best outcome is 271 according to Table 5. This is through adding the variable median age onto the model. 
+
+### Selecting model with 4 input variables:
+
+```{r,tidy=TRUE}
+
+Model13<- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$abc1 + data_set$medianAge + data_set$medianIncome, data = data_set, family=binomial)
+Model14<- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$abc1 + data_set$medianAge +  data_set$notBornUK , data = data_set, family=binomial)
+models_summary[13,1] = "Model13, VoteBrexit~withHigherEd+abc1+medianAge+medianIncome"
+models_summary[13,2] = summary(Model13)$aic
+models_summary[14,1] = "Model14, VoteBrexit~withHigher+abc1+medianAge+notBornUK"
+models_summary[14,2] = summary(Model14)$aic
+kable(models_summary, caption = "Fourth Stage: AIC comparison by models.")
+```
+
+Best Model = (Model13, VoteBrexit~withHigherEd+abc1+medianAge+medianIncome)
+
+In this stage we check the last two variable against each other, with the outcome showing that the median income is more significant than being born in the UK. 
+
+```{r}
+Model15<- glm(formula = data_set$voteBrexit ~ data_set$withHigherEd + data_set$abc1 + data_set$medianAge +  data_set$notBornUK + data_set$medianIncome , data = data_set, family=binomial)
+models_summary[15,1] = "Model15, VoteBrexit~withHigherEd+abc1+medianAge+medianIncome+notBornUK"
+models_summary[15,2] = summary(Model15)$aic
+kable(models_summary, caption = "Fifth Stage: AIC comparison by models.")
+```
+
+Finally, the best model with better AIC is the five-input model with a score of 259. After adding each new variable consecutively, checking that the AIC is reducing each time. The most important variables are kept static as we go through each of the models until we are left with the least important variable which is deemed to be notBornUK.
+
+## Tasks (week 7):
+### 1. Use the rpart package to create a decision tree classification model. Visualise your model and intepret the fitted model.
+
+In this question we will use are best model from the previous section with all the variables included to create a decision tree classification model.
+
+When we want to create a split that divides the data into two distinct classes, we try to minimize the average ‘Gini Impurity’ of the resulting two leaves as much as possible. The Gini Impurity measures how close the set is to being composed of just one class.
+
+The parameters extra and digits are used to show the proportion of the population that will reach each node as well as the amount of correct predictions within that proportion; furthermore, the proportion of the population is also shown as percentage with 3 digits.
+
+```{r,tidy=TRUE}
+mytree = rpart(voteBrexit ~ abc1 + notBornUK + medianIncome + medianAge + withHigherEd, data = data_set, method='class')
+prp(mytree, main = "", extra = 102, digits = 3)
+```
+
+
+If we have found that the (withHigherED >= 0.47) is true it classifies the data set at 19% the alternative is (withHigherED < 0.47), which then splits the decision tree  on (notBornUK >= 0.43) classifying only 3% or 6/10 if false and if true the next split is (withHigherED >= 0.31) we predict 52% or 158/180 of our dataset when false. If we get the variable (withHigherED >= 0.31) being true we then split on (abc1 < 0.412) classifying 4.9% of the dataset when false and 20.6% or 60/71 when true.
+
+### 2. Compare your decision tree model and your logistic regression model. Do they attribute high importance to the same factors? How do you intepret each model to explain the referendum vote?
+
+To compare both models we use the metric accuracy each of the models are in terms of whether the prediction is correct to the actual result. 
+
+```{r}
+#Setting outcomes to True/False
+pred_reg <- ifelse( 
+  (predict(myglm, newdata = data_set, type = "response")) < 0.5, 
+  FALSE, TRUE) 
+pred_t <- predict(mytree, newdata = data_set, type = "class")
+
+#Calulating Accuracy
+accuracy_regression <- sum(pred_reg == data_set$voteBrexit) / nrow(data_set)
+accuracy_decision_tree <- sum(pred_t == data_set$voteBrexit) / nrow(data_set)
+
+print(paste(c('Accuracy of Logistic Regression model: ', accuracy_regression), collapse=""))
+print(paste(c('Accuracy of Decision tree model: ', accuracy_decision_tree), collapse=""))
+```
+As shown in the results above, logisitc regression has the highest accuracy rating at 0.87 whereas the decision tree works out at 0.85. This correlates with what the guardian suggest as there is alot of outliers in some of the variables. Logistical regression takes all the parameters into account therefore it can be said to be more accurate. 
+
+
+```{r}
+
+summary(mytree)$variableimportance
+
+format(summary(myglm)$coefficients, digits = 10) %>%
+  kable(caption = "Coefficients of the regression model.")
+
+```
+
+
+
+The decision tree model and the logistical regression model can be seen to have the same important factors however some of them are different. Comparing the confidence intervals and AIC of the logistical model we have compared these against the importance of decision tree summary. As we can see in the comparison above, the two most important factors are the same, With Higher Education and ABC1 Social Grade, while the other inputs are not the same importance level. This can be seen as the most important variable withHigherEd has the highest AIC and is the most important variable in the decision tree model with a value of 41 which correlates with it being at the top of the decision tree and the single most important predictor of Brexit. However the other factors are different for example the two least important variables the logisitic model deems to be the notBornUK variable as the least important where as the decision tree deems the medianAge the least important.
+
+
+### 3. Which model would you use if you were explaining the results for a newspaper article, and why?
+
+When displaying statistics in a newspaper article, we need to remember that not everyone will have a strong statistical background and for a general reader these statistics will need to be displayed in a way that is simple to read and analyse.
+
+The decision tree model would be easier to explain results in a newspaper, this is due to the fact that a decision tree is much more interpretable. In my opinion the problem with logistic regression is that it can be often quite hard to interpret if the data is not a linear shape, a good example of this is the born in the UK variable shown on (Figure 1) this could be interpreted in many ways as the distribution of points are quite scattered, this is an example where a decision tree would work perfectly for the reader to interpret easily.
+
+As readers of the newspaper article might not all be statisticians, they may end up interpreting the logistic regression model wrongly causing the reader to come to an incorrect conclusion. The great thing with the decision tree model for newspapers is that they are simple and easily interpreted Decision tree models do not need advanced statistical knowledge to interpret them correctly. Although the logistic regression model is more accurate although by not much. This is a good trade off between interpretability and accuracy which is the most important when displaying the results to the public.
